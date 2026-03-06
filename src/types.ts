@@ -1,6 +1,14 @@
 // ── Agent type ──────────────────────────────────────────────────────────────
 export type AgentFn = (input: any) => any | Promise<any>;
 
+// Enriched output — adapters return this to auto-track tokens/cost
+export interface AgentResult {
+  __bulwark: true;
+  output: any;
+  tokensUsed?: number;
+  costIncurred?: number;
+}
+
 // ── Rules ───────────────────────────────────────────────────────────────────
 export interface RuleContext {
   input: any;

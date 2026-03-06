@@ -4,9 +4,30 @@
   "description": "Production harness for AI agents — behavioral contracts, budget enforcement, drift detection, and multi-step safety",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "bulwark": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "default": "./dist/adapters/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "default": "./dist/mcp.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "test": "tsx tests/bulwark.test.ts"
+    "test": "tsx tests/bulwark.test.ts",
+    "demo:support": "tsx examples/customer-support.ts",
+    "demo:trading": "tsx examples/trading-bot.ts",
+    "demo:review": "tsx examples/code-review.ts",
+    "mcp": "node dist/mcp.js"
   },
   "keywords": [
     "ai",
@@ -17,7 +38,12 @@
     "guardrails",
     "drift-detection",
     "budget",
-    "compliance"
+    "compliance",
+    "openai",
+    "anthropic",
+    "langchain",
+    "vercel-ai",
+    "mcp"
   ],
   "license": "MIT",
   "devDependencies": {

@@ -106,6 +106,8 @@ export function createHarnessedAgent(
     // ── Execute agent ──
     const start = Date.now();
     let output: any;
+    let agentTokens: number | undefined;
+    let agentCost: number | undefined;
     try {
       output = await agent(input);
     } catch (err) {
@@ -119,6 +121,13 @@ export function createHarnessedAgent(
       return { output: undefined, violations: allViolations, latencyMs: Date.now() - start };
     }
     const latencyMs = Date.now() - start;
+
+    // ── Extract enriched output from adapters ──
+    if (output && typeof output === 'object' && output.__bulwark === true) {
+      agentTokens = output.tokensUsed;
+      agentCost = output.costIncurred;
+      output = output.output;
+    }
 
     // ── Latency check ──
     if (budget) {
@@ -135,9 +144,9 @@ export function createHarnessedAgent(
     const invViolations = await checkRules(contract.invariants, postCtx, 'invariant');
     allViolations.push(...invViolations);
 
-    // ── Record budget usage ──
+    // ── Record budget usage (adapter auto-tracking takes precedence) ──
     if (budget) {
-      budget.record(opts?.tokensUsed, opts?.costIncurred);
+      budget.record(opts?.tokensUsed ?? agentTokens, opts?.costIncurred ?? agentCost);
     }
 
     return { output, violations: allViolations, latencyMs };

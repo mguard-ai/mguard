@@ -1114,6 +1114,247 @@ async function runTests() {
   assert(lca.summary.includes('EXCELLENT'), 'lifecycle: excellent verdict');
 
   // ═══════════════════════════════════════════════════════════════════════
+  section('AgentResult — enriched output auto-tracking');
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Agent that returns AgentResult with token/cost info
+  const enrichedAgent = async (input: any) => ({
+    __bulwark: true as const,
+    output: `processed: ${input}`,
+    tokensUsed: 250,
+    costIncurred: 0.005,
+  });
+
+  const enrichedContract = Bulwark.contract('enriched')
+    .post('has-output', (ctx) => typeof ctx.output === 'string')
+    .budget({ maxTokens: 1000, maxCost: 0.05 })
+    .build();
+
+  const enrichedHarness = Bulwark.wrap(enrichedAgent, enrichedContract);
+  const er1 = await enrichedHarness.call('test');
+  assert(er1.allowed === true, 'enriched output allowed');
+  assert(er1.output === 'processed: test', 'enriched output extracted cleanly');
+
+  const eb = enrichedHarness.getBudget();
+  assert(eb.tokens.used === 250, 'tokens auto-tracked from AgentResult');
+  assertApprox(eb.cost.used, 0.005, 0.0001, 'cost auto-tracked from AgentResult');
+
+  // Second call
+  await enrichedHarness.call('test2');
+  const eb2 = enrichedHarness.getBudget();
+  assert(eb2.tokens.used === 500, 'tokens accumulated across calls');
+  assertApprox(eb2.cost.used, 0.01, 0.0001, 'cost accumulated across calls');
+
+  // Budget should exhaust after 4 calls (4 × 250 = 1000)
+  await enrichedHarness.call('test3');
+  await enrichedHarness.call('test4');
+  const er5 = await enrichedHarness.call('test5');
+  assert(er5.allowed === false, 'budget exhausted blocks enriched agent');
+  assert(er5.violations.some(v => v.rule === 'budget:tokens'), 'token budget violation');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  section('AgentResult — CallOptions override enriched');
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const overrideContract = Bulwark.contract('override')
+    .budget({ maxTokens: 10000 })
+    .build();
+
+  const overrideHarness = Bulwark.wrap(enrichedAgent, overrideContract);
+  await overrideHarness.call('test', { tokensUsed: 999 });
+  const ob = overrideHarness.getBudget();
+  assert(ob.tokens.used === 999, 'CallOptions tokensUsed overrides AgentResult');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  section('Adapter: openai mock');
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Mock OpenAI client
+  const mockOpenAI = {
+    chat: {
+      completions: {
+        create: async (opts: any) => ({
+          choices: [{ message: { content: `Response to: ${opts.messages[opts.messages.length - 1].content}` } }],
+          usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+        }),
+      },
+    },
+  };
+
+  const { openai: openaiAdapter } = await import('../src/adapters/openai');
+  const oaiAgent = openaiAdapter(mockOpenAI, { model: 'gpt-4o', systemPrompt: 'Be helpful' });
+
+  const oaiContract = Bulwark.contract('openai-test')
+    .post('has-response', (ctx) => typeof ctx.output === 'string' && ctx.output.length > 0)
+    .budget({ maxTokens: 1000, maxCost: 0.10 })
+    .build();
+
+  const oaiHarness = Bulwark.wrap(oaiAgent, oaiContract);
+  const oaiResult = await oaiHarness.call('Hello world');
+  assert(oaiResult.allowed === true, 'OpenAI adapter call allowed');
+  assert(oaiResult.output.includes('Response to: Hello world'), 'OpenAI adapter output correct');
+
+  const oaiBudget = oaiHarness.getBudget();
+  assert(oaiBudget.tokens.used === 150, 'OpenAI adapter auto-tracks tokens');
+  assert(oaiBudget.cost.used > 0, 'OpenAI adapter auto-tracks cost');
+
+  // Test with message array input
+  const oaiResult2 = await oaiHarness.call([{ role: 'user', content: 'test' }]);
+  assert(oaiResult2.allowed === true, 'OpenAI adapter handles message array');
+
+  // Test with object input
+  const oaiResult3 = await oaiHarness.call({ messages: [{ role: 'user', content: 'obj test' }] });
+  assert(oaiResult3.allowed === true, 'OpenAI adapter handles object with messages');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  section('Adapter: anthropic mock');
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const mockAnthropic = {
+    messages: {
+      create: async (opts: any) => ({
+        content: [{ type: 'text', text: `Claude says: ${opts.messages[0].content}` }],
+        usage: { input_tokens: 80, output_tokens: 40 },
+      }),
+    },
+  };
+
+  const { anthropic: anthropicAdapter } = await import('../src/adapters/anthropic');
+  const antAgent = anthropicAdapter(mockAnthropic, { model: 'claude-sonnet-4-6' });
+
+  const antContract = Bulwark.contract('anthropic-test')
+    .post('has-response', (ctx) => typeof ctx.output === 'string')
+    .budget({ maxTokens: 500 })
+    .build();
+
+  const antHarness = Bulwark.wrap(antAgent, antContract);
+  const antResult = await antHarness.call('Hello');
+  assert(antResult.allowed === true, 'Anthropic adapter call allowed');
+  assert(antResult.output.includes('Claude says: Hello'), 'Anthropic adapter output correct');
+
+  const antBudget = antHarness.getBudget();
+  assert(antBudget.tokens.used === 120, 'Anthropic adapter tracks tokens (80+40)');
+  assert(antBudget.cost.used > 0, 'Anthropic adapter tracks cost');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  section('Adapter: langchain mock');
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const { langchain: langchainAdapter } = await import('../src/adapters/langchain');
+
+  // Mock ChatModel (returns AIMessage-like)
+  const mockChatModel = {
+    invoke: async (input: any) => ({
+      content: `LangChain: ${typeof input === 'string' ? input : JSON.stringify(input)}`,
+      response_metadata: {
+        usage: { prompt_tokens: 60, completion_tokens: 30 },
+      },
+    }),
+  };
+
+  const lcAdaptAgent = langchainAdapter(mockChatModel);
+  const lcAdaptContract = Bulwark.contract('langchain-test')
+    .post('has-response', (ctx) => typeof ctx.output === 'string')
+    .budget({ maxTokens: 500 })
+    .build();
+
+  const lcAdaptHarness = Bulwark.wrap(lcAdaptAgent, lcAdaptContract);
+  const lcAdaptResult = await lcAdaptHarness.call('Hello');
+  assert(lcAdaptResult.allowed === true, 'LangChain adapter call allowed');
+  assert(lcAdaptResult.output.includes('LangChain: Hello'), 'LangChain adapter output correct');
+  assert(lcAdaptHarness.getBudget().tokens.used === 90, 'LangChain adapter tracks tokens (60+30)');
+
+  // Mock AgentExecutor (returns {output: string})
+  const mockExecutor = {
+    invoke: async (input: any) => ({
+      output: `Executed: ${input.input ?? input}`,
+    }),
+  };
+
+  const execAgent = langchainAdapter(mockExecutor);
+  const execHarness = Bulwark.wrap(execAgent, Bulwark.contract('exec').build());
+  const execResult = await execHarness.call({ input: 'find flights' });
+  assert(execResult.output === 'Executed: find flights', 'LangChain executor output extracted');
+
+  // Mock string output (from StringOutputParser)
+  const mockStringChain = {
+    invoke: async (input: any) => `Plain: ${input}`,
+  };
+  const strAgent = langchainAdapter(mockStringChain);
+  const strHarness = Bulwark.wrap(strAgent, Bulwark.contract('str').build());
+  const strResult = await strHarness.call('hello');
+  assert(strResult.output === 'Plain: hello', 'LangChain string output works');
+
+  // Invalid runnable
+  let lcError = false;
+  try { langchainAdapter({}); } catch { lcError = true; }
+  assert(lcError, 'LangChain adapter rejects invalid runnable');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  section('MCP server — tool handlers');
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const { handleTool, TOOLS, contracts: mcpContracts, registerContract, registerSession } = await import('../src/mcp');
+
+  // List tools
+  assert(TOOLS.length === 8, 'MCP has 8 tools');
+  assert(TOOLS.some(t => t.name === 'bulwark_create_contract'), 'has create_contract tool');
+  assert(TOOLS.some(t => t.name === 'bulwark_get_drift'), 'has get_drift tool');
+
+  // Create contract
+  const createResult = handleTool('bulwark_create_contract', {
+    name: 'mcp-test',
+    description: 'Test contract via MCP',
+    maxTokens: 5000,
+    maxCost: 1.00,
+    maxActions: 20,
+  });
+  assert(createResult.success === true, 'MCP create contract succeeds');
+  assert(createResult.contract.name === 'mcp-test', 'MCP contract name');
+  assert(createResult.contract.budget.maxTokens === 5000, 'MCP contract budget');
+
+  // List contracts
+  const listResult = handleTool('bulwark_list_contracts', {});
+  assert(Array.isArray(listResult), 'MCP list contracts returns array');
+  assert(listResult.some((c: any) => c.name === 'mcp-test'), 'MCP lists created contract');
+
+  // Register and query a session
+  const mcpSession = Bulwark.wrap(echoAgent, Bulwark.contract('mcp-session').build());
+  await mcpSession.call('test');
+  registerSession(mcpSession);
+
+  const sessionList = handleTool('bulwark_list_sessions', {});
+  assert(Array.isArray(sessionList), 'MCP list sessions returns array');
+  assert(sessionList.length >= 1, 'MCP has at least 1 session');
+
+  const metricsResult = handleTool('bulwark_get_metrics', { sessionId: mcpSession.sessionId });
+  assert(metricsResult.totalCalls === 1, 'MCP metrics shows 1 call');
+
+  const driftResult = handleTool('bulwark_get_drift', { sessionId: mcpSession.sessionId });
+  assert(driftResult.sampleSize === 1, 'MCP drift shows 1 sample');
+
+  const budgetResult = handleTool('bulwark_get_budget', { sessionId: mcpSession.sessionId });
+  assert(budgetResult.status === 'ok', 'MCP budget status ok');
+
+  // Unknown tool
+  const unknownResult = handleTool('nonexistent', {});
+  assert(unknownResult.error !== undefined, 'MCP unknown tool returns error');
+
+  // Unknown session
+  const noSession = handleTool('bulwark_get_metrics', { sessionId: 'nope' });
+  assert(noSession.error !== undefined, 'MCP unknown session returns error');
+
+  // ═══════════════════════════════════════════════════════════════════════
+  section('Adapters re-export from main index');
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const mainIndex = await import('../src/index');
+  assert(typeof mainIndex.openai === 'function', 'openai exported from index');
+  assert(typeof mainIndex.anthropic === 'function', 'anthropic exported from index');
+  assert(typeof mainIndex.langchain === 'function', 'langchain exported from index');
+  assert(typeof mainIndex.adapters === 'object', 'adapters namespace exported');
+
+  // ═══════════════════════════════════════════════════════════════════════
   // RESULTS
   // ═══════════════════════════════════════════════════════════════════════
 
