@@ -1,0 +1,28 @@
+{
+  "name": "bulwark",
+  "version": "1.0.0",
+  "description": "Production harness for AI agents — behavioral contracts, budget enforcement, drift detection, and multi-step safety",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx tests/bulwark.test.ts"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "harness",
+    "safety",
+    "contracts",
+    "guardrails",
+    "drift-detection",
+    "budget",
+    "compliance"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.3.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
