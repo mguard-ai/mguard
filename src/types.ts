@@ -138,6 +138,8 @@ export interface Decision {
   recovered: boolean;
   recoveryAttempts: number;
   budgetSnapshot: BudgetSnapshot;
+  traceEntry?: TraceEntry;
+  immuneResponse?: ImmuneResponse;
 }
 
 // ── Drift ───────────────────────────────────────────────────────────────────
@@ -209,7 +211,93 @@ export interface TestCoverage {
   uncovered: string[];
 }
 
-// ── Audit ───────────────────────────────────────────────────────────────────
+// ── Attestation ─────────────────────────────────────────────────────────────
+export interface TraceEntry {
+  index: number;
+  timestamp: number;
+  input: any;
+  output: any;
+  contractId: string;
+  decision: 'allowed' | 'blocked';
+  violations: string[];
+  hash: string;
+  prevHash: string;
+}
+
+export interface AttestationCertificate {
+  id: string;
+  version: '1.0';
+  protocol: 'witness/1.0';
+  agentId: string;
+  contractId: string;
+  period: { start: number; end: number };
+  traceRoot: string;
+  traceLength: number;
+  compliance: {
+    totalActions: number;
+    allowed: number;
+    blocked: number;
+    complianceRate: number;
+  };
+  behavioral: {
+    driftScore: number;
+    budgetUtilization: number;
+  };
+  signature: string;
+  issuedAt: number;
+}
+
+export interface VerificationResult {
+  valid: boolean;
+  chainIntegrity: boolean;
+  signatureValid: boolean;
+  complianceVerified: boolean;
+  details: string[];
+}
+
+// ── Immunity ────────────────────────────────────────────────────────────────
+export interface ImmuneResponse {
+  threat: boolean;
+  confidence: number;
+  threatType: 'known' | 'anomaly' | 'none';
+  response: 'allow' | 'quarantine' | 'block';
+  explanation: string;
+  newThreat: boolean;
+}
+
+export interface ThreatRecord {
+  id: string;
+  pattern: string;
+  inputShape: string;
+  firstSeen: number;
+  lastSeen: number;
+  occurrences: number;
+  severity: 'critical' | 'warning' | 'info';
+}
+
+export interface Antibody {
+  id: string;
+  pattern: string;
+  description: string;
+  source: string;
+  effectiveness: number;
+  created: number;
+  uses: number;
+}
+
+export interface ImmuneStatus {
+  established: boolean;
+  sampleCount: number;
+  knownThreats: number;
+  antibodyCount: number;
+  baseline: {
+    avgViolationRate: number;
+    avgLatency: number;
+    patternCount: number;
+  };
+}
+
+// ── Audit ────────────────────────────────────────────────────────────────────
 export interface AuditEntry {
   timestamp: number;
   sessionId: string;
@@ -248,6 +336,14 @@ export interface HarnessedAgent {
   setState: (key: string, value: any) => void;
   getState: () => SessionState;
   reset: () => void;
+  // Attestation (witness/1.0 protocol)
+  attest: () => AttestationCertificate;
+  verifyAttestation: (cert: AttestationCertificate) => VerificationResult;
+  getTraceChain: () => TraceEntry[];
+  // Adaptive immunity
+  getImmuneStatus: () => ImmuneStatus;
+  exportAntibodies: () => Antibody[];
+  importAntibodies: (antibodies: Antibody[]) => number;
   readonly sessionId: string;
   readonly contract: Contract;
 }

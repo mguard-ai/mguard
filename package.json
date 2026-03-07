@@ -27,6 +27,8 @@
     "demo:support": "tsx examples/customer-support.ts",
     "demo:trading": "tsx examples/trading-bot.ts",
     "demo:review": "tsx examples/code-review.ts",
+    "demo:witness": "tsx examples/witness-protocol.ts",
+    "test:witness": "tsx tests/witness.test.ts",
     "mcp": "node dist/mcp.js"
   },
   "keywords": [

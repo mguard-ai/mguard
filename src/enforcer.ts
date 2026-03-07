@@ -2,11 +2,15 @@ import {
   AgentFn, Contract, Decision, Violation, HistoryEntry,
   SessionState, SessionMetrics, HarnessedAgent, CallOptions,
   BudgetSnapshot, RuleContext, SequenceConfig, DriftConfig,
+  TraceEntry, AttestationCertificate, VerificationResult,
+  ImmuneResponse, Antibody, ImmuneStatus,
 } from './types';
 import { BudgetEnforcer } from './budget';
 import { DriftMonitor } from './monitor';
 import { SequenceEnforcer } from './sequence';
 import { Auditor } from './audit';
+import { HashChain, AttestationEngine } from './attestation';
+import { ImmuneSystem } from './immunity';
 
 let sessionCounter = 0;
 
@@ -40,6 +44,9 @@ export function createHarnessedAgent(
   const sequencer = contract.sequenceConfig
     ? new SequenceEnforcer(contract.sequenceConfig) : null;
   const auditor = new Auditor(sessionId, contract.name);
+  const chain = new HashChain(contract.name);
+  const attestor = new AttestationEngine(sessionId);
+  const immune = new ImmuneSystem();
 
   function buildContext(input: any, output?: any): RuleContext {
     return { input, output, state, history, metrics };
@@ -210,6 +217,23 @@ export function createHarnessedAgent(
       activeDegradations: [],
     };
 
+    // ── Attestation: append to hash chain ──
+    const violationNames = lastResult.violations.map(v => v.rule);
+    const traceEntry = chain.append(
+      input, lastResult.output,
+      allowed ? 'allowed' : 'blocked',
+      violationNames,
+    );
+
+    // ── Immunity: evaluate + learn ──
+    const immuneResponse = immune.evaluate(
+      input, lastResult.output, violationNames, lastResult.latencyMs,
+    );
+    if (!allowed) {
+      const hasCriticalViolation = lastResult.violations.some(v => v.severity === 'critical');
+      immune.recordThreat(input, hasCriticalViolation ? 'critical' : 'warning');
+    }
+
     const decision: Decision = {
       allowed,
       output: allowed ? lastResult.output : undefined,
@@ -218,6 +242,8 @@ export function createHarnessedAgent(
       recovered: (attempts > 1 || usedFallback) && allowed,
       recoveryAttempts: attempts - 1,
       budgetSnapshot,
+      traceEntry,
+      immuneResponse,
     };
 
     // ── Update session state ──
@@ -297,7 +323,29 @@ export function createHarnessedAgent(
       budget?.reset();
       monitor.reset();
       auditor.reset();
+      chain.reset();
+      immune.reset();
     },
+    // Attestation (witness/1.0)
+    attest: () => {
+      const budgetUtil = budget
+        ? Math.max(
+            budget.snapshot().tokens.percent,
+            budget.snapshot().cost.percent,
+            budget.snapshot().actions.percent,
+          ) / 100
+        : 0;
+      return attestor.generateCertificate(
+        chain, contract.name, monitor.getDrift().score, budgetUtil,
+      );
+    },
+    verifyAttestation: (cert: AttestationCertificate) =>
+      attestor.verifyCertificate(cert, chain),
+    getTraceChain: () => chain.getEntries(),
+    // Adaptive immunity
+    getImmuneStatus: () => immune.getStatus(),
+    exportAntibodies: () => immune.exportAntibodies(sessionId),
+    importAntibodies: (antibodies: Antibody[]) => immune.importAntibodies(antibodies),
     sessionId,
     contract,
   };

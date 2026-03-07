@@ -134,6 +134,8 @@ export { DriftMonitor } from './monitor';
 export { SequenceEnforcer, noRepeatLoop, noEscalation, maxCumulativeCost, noOscillation } from './sequence';
 export { testContract } from './testing';
 export { Auditor } from './audit';
+export { HashChain, AttestationEngine } from './attestation';
+export { ImmuneSystem } from './immunity';
 export * as adapters from './adapters/index';
 export { openai } from './adapters/openai';
 export { anthropic } from './adapters/anthropic';
