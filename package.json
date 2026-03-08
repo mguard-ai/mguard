@@ -32,7 +32,9 @@
     "mcp": "node dist/mcp.js",
     "witness": "tsx src/witness/server.ts",
     "test:service": "tsx tests/witness-service.test.ts",
-    "demo:service": "tsx examples/witness-service.ts"
+    "demo:service": "tsx examples/witness-service.ts",
+    "demo:consensus": "tsx examples/witness-consensus.ts",
+    "test:consensus": "tsx tests/witness-consensus.test.ts"
   },
   "keywords": [
     "ai",

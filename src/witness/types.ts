@@ -60,3 +60,36 @@ export interface WitnessServerConfig {
   host?: string;
   persistPath?: string;
 }
+
+// ── Multi-Witness Consensus ─────────────────────────────────────────────────
+
+/** Abstract interface for any witness node (local or remote). */
+export interface WitnessNode {
+  submitCertificate(cert: WitnessCertificate): Promise<VerificationReceipt>;
+  registerKey(agentId: string, publicKey: string): Promise<void>;
+  getWitnessInfo(): Promise<{ witnessId: string; publicKey: string; protocol: string }>;
+}
+
+/** Configuration for multi-witness consensus. */
+export interface ConsensusConfig {
+  quorum: number;     // minimum agreeing witnesses for consensus
+  timeout?: number;   // ms to wait per witness (default 5000)
+}
+
+/** Result of submitting a certificate to a witness network. */
+export interface ConsensusResult {
+  certificateId: string;
+  agentId: string;
+  consensus: boolean;
+  quorum: number;
+  agreeing: number;
+  dissenting: number;
+  unreachable: number;
+  receipts: VerificationReceipt[];
+  witnessResults: {
+    witnessId: string;
+    valid: boolean;
+    details: string[];
+  }[];
+  timestamp: number;
+}
