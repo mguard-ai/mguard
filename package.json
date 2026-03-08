@@ -29,7 +29,10 @@
     "demo:review": "tsx examples/code-review.ts",
     "demo:witness": "tsx examples/witness-protocol.ts",
     "test:witness": "tsx tests/witness.test.ts",
-    "mcp": "node dist/mcp.js"
+    "mcp": "node dist/mcp.js",
+    "witness": "tsx src/witness/server.ts",
+    "test:service": "tsx tests/witness-service.test.ts",
+    "demo:service": "tsx examples/witness-service.ts"
   },
   "keywords": [
     "ai",
