@@ -63,6 +63,15 @@
     "bft",
     "eu-ai-act"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CGS22/bulwark.git"
+  },
+  "homepage": "https://github.com/CGS22/bulwark",
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.3.5",
