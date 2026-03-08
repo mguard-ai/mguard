@@ -1,6 +1,6 @@
 {
   "name": "mguard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Memory defense for AI agents — stops MINJA, AgentPoison, and MemoryGraft attacks. Zero dependencies.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -71,7 +71,8 @@
   "homepage": "https://github.com/mguard-ai/mguard",
   "files": [
     "dist",
-    "LICENSE"
+    "LICENSE",
+    "README.md"
   ],
   "license": "MIT",
   "devDependencies": {
