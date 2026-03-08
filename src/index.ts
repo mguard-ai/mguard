@@ -137,6 +137,7 @@ export { Auditor } from './audit';
 export { HashChain, AttestationEngine } from './attestation';
 export { ImmuneSystem } from './immunity';
 export * as witness from './witness/index';
+export * as memory from './memory/index';
 export * as adapters from './adapters/index';
 export { openai } from './adapters/openai';
 export { anthropic } from './adapters/anthropic';

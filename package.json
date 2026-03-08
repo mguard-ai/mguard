@@ -1,11 +1,11 @@
 {
-  "name": "bulwark-ai",
-  "version": "2.0.0",
-  "description": "Production harness for AI agents — behavioral contracts, cryptographic attestation, and multi-witness consensus verification",
+  "name": "mguard",
+  "version": "1.0.0",
+  "description": "Memory defense for AI agents — stops MINJA, AgentPoison, and MemoryGraft attacks. Zero dependencies.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "bulwark": "dist/cli.js"
+    "mguard": "dist/cli.js"
   },
   "exports": {
     ".": {
@@ -23,11 +23,16 @@
     "./witness": {
       "types": "./dist/witness/index.d.ts",
       "default": "./dist/witness/index.js"
+    },
+    "./memory": {
+      "types": "./dist/memory/index.d.ts",
+      "default": "./dist/memory/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsx tests/bulwark.test.ts && tsx tests/witness.test.ts && tsx tests/witness-service.test.ts && tsx tests/witness-consensus.test.ts",
+    "test": "tsx tests/bulwark.test.ts && tsx tests/witness.test.ts && tsx tests/witness-service.test.ts && tsx tests/witness-consensus.test.ts && tsx tests/memory-firewall.test.ts",
+    "test:memory": "tsx tests/memory-firewall.test.ts",
     "test:core": "tsx tests/bulwark.test.ts",
     "demo:support": "tsx examples/customer-support.ts",
     "demo:trading": "tsx examples/trading-bot.ts",
@@ -44,30 +49,26 @@
   "keywords": [
     "ai",
     "agent",
-    "harness",
-    "safety",
-    "contracts",
-    "guardrails",
-    "drift-detection",
-    "budget",
-    "compliance",
-    "openai",
-    "anthropic",
-    "langchain",
-    "vercel-ai",
-    "mcp",
-    "attestation",
-    "witness",
-    "consensus",
+    "memory",
+    "security",
+    "poisoning",
+    "minja",
+    "defense",
+    "firewall",
+    "trust",
     "ed25519",
-    "bft",
-    "eu-ai-act"
+    "owasp",
+    "langchain",
+    "mem0",
+    "attestation",
+    "eu-ai-act",
+    "compliance"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/CGS22/bulwark.git"
+    "url": "https://github.com/mguard-ai/mguard.git"
   },
-  "homepage": "https://github.com/CGS22/bulwark",
+  "homepage": "https://github.com/mguard-ai/mguard",
   "files": [
     "dist",
     "LICENSE"
