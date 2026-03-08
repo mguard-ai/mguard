@@ -1,7 +1,7 @@
 {
   "name": "bulwark",
-  "version": "1.0.0",
-  "description": "Production harness for AI agents — behavioral contracts, budget enforcement, drift detection, and multi-step safety",
+  "version": "2.0.0",
+  "description": "Production harness for AI agents — behavioral contracts, cryptographic attestation, and multi-witness consensus verification",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -19,11 +19,16 @@
     "./mcp": {
       "types": "./dist/mcp.d.ts",
       "default": "./dist/mcp.js"
+    },
+    "./witness": {
+      "types": "./dist/witness/index.d.ts",
+      "default": "./dist/witness/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsx tests/bulwark.test.ts",
+    "test": "tsx tests/bulwark.test.ts && tsx tests/witness.test.ts && tsx tests/witness-service.test.ts && tsx tests/witness-consensus.test.ts",
+    "test:core": "tsx tests/bulwark.test.ts",
     "demo:support": "tsx examples/customer-support.ts",
     "demo:trading": "tsx examples/trading-bot.ts",
     "demo:review": "tsx examples/code-review.ts",
@@ -50,7 +55,13 @@
     "anthropic",
     "langchain",
     "vercel-ai",
-    "mcp"
+    "mcp",
+    "attestation",
+    "witness",
+    "consensus",
+    "ed25519",
+    "bft",
+    "eu-ai-act"
   ],
   "license": "MIT",
   "devDependencies": {

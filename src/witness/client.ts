@@ -56,8 +56,8 @@ export class WitnessClient {
   private async get(path: string): Promise<any> {
     const res = await fetch(`${this.baseUrl}${path}`);
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error ?? `HTTP ${res.status}`);
+      const errBody: any = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(errBody.error ?? `HTTP ${res.status}`);
     }
     return res.json();
   }
@@ -69,8 +69,8 @@ export class WitnessClient {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error ?? `HTTP ${res.status}`);
+      const errBody: any = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(errBody.error ?? `HTTP ${res.status}`);
     }
     return res.json();
   }
