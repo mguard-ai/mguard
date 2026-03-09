@@ -4,6 +4,10 @@ Memory defense for AI agents. Stops MINJA, AgentPoison, and MemoryGraft attacks 
 
 Zero dependencies. Drop-in protection for Mem0, LangChain, or any custom memory system.
 
+## Demo: Blocking a MINJA Attack
+
+![mguard demo — blocking MINJA memory poisoning attack](demo.svg)
+
 ## Why this exists
 
 Published academic attacks achieve **95%+ success rates** against AI agent memory systems ([MINJA — NeurIPS 2025](https://arxiv.org/abs/2410.21657)). No production defense existed. OWASP added memory poisoning as [ASI06:2026](https://genai.owasp.org) to the Agentic Security top 10. EU AI Act enforcement begins August 2026 with fines up to 7% of global revenue.
